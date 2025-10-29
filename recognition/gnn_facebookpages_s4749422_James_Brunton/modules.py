@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn import GCNConv
 
 
 class GraphConvolutionalNetwork(nn.Module):
@@ -9,7 +9,8 @@ class GraphConvolutionalNetwork(nn.Module):
         # does all the graph maths for us...
         # we make to blocks
         self.conv1 = GCNConv(in_dim, hidden, normalize=True, cached=True)
-        self.conv2 = GCNConv(hidden, out_dim, normalize=True, cached=True)
+        self.conv2 = GCNConv(hidden, hidden, normalize=True, cached=True)
+        self.conv3 = GCNConv(hidden, out_dim, normalize=True, cached=True)
         # by setting some activation to zero, we can prevent overfitting... nuerons are less over-dependent on other neurons
         # also acts a way of aproximating multiple networks when we evaluate the layer multiple times...
         self.drop = nn.Dropout(p)
@@ -21,5 +22,7 @@ class GraphConvolutionalNetwork(nn.Module):
         # relu to find non-linear patterns
         x = self.conv1(x, edge_index).relu()
         x = self.drop(x)
-        x = self.conv2(x, edge_index)
+        x = self.conv2(x, edge_index).relu()
+        x = self.drop(x)
+        x = self.conv3(x, edge_index)
         return x
