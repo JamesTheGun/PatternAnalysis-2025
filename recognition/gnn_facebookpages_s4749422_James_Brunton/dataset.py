@@ -50,3 +50,36 @@ def build_y(targets, nid2idx):
         if nid in nid2idx:
             y[nid2idx[nid]] = lab2i[lab]
     return torch.from_numpy(y), labels
+
+
+def build_edge_index(edges, nid2idx):
+    src = edges["id_1"].map(nid2idx).to_numpy()
+    dst = edges["id_2"].map(nid2idx).to_numpy()
+    e0 = np.concatenate([src, dst])
+    e1 = np.concatenate([dst, src])
+    mask = e0 != e1
+    edge_index = np.vstack([e0[mask], e1[mask]]).astype(np.int64)  # [2,E]
+    return torch.from_numpy(edge_index)
+
+
+def make_masks(y, per_class_train=20, val_size=500, test_size=1000, seed=0):
+    N = y.shape[0]
+    rng = np.random.default_rng(seed)
+    train = np.zeros(N, dtype=bool)
+    val = np.zeros(N, dtype=bool)
+    test = np.zeros(N, dtype=bool)
+
+    labeled = np.where(y.numpy() >= 0)[0]
+    classes = np.unique(y.numpy()[labeled])
+
+    for c in classes:
+        idx_c = labeled[y.numpy()[labeled] == c]
+        rng.shuffle(idx_c)
+        take = min(per_class_train, len(idx_c))
+        train[idx_c[:take]] = True
+
+    rest = labeled[~train[labeled]]
+    rng.shuffle(rest)
+    val[rest[:val_size]] = True
+    test[rest[val_size : val_size + test_size]] = True
+    return torch.from_numpy(train), torch.from_numpy(val), torch.from_numpy(test)
