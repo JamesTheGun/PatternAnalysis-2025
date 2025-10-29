@@ -60,6 +60,20 @@ def build_edge_index(edges, nid2idx):
     edge_index = np.vstack([e0[mask], e1[mask]]).astype(np.int64)
     return torch.from_numpy(edge_index)
 
+
+def build_index(features, targets, edges):
+    node_ids = np.array(
+        sorted(
+            set(features.index)
+            | set(targets["id"])
+            | set(edges["id_1"])
+            | set(edges["id_2"])
+        )
+    )
+    nid2idx = {nid: i for i, nid in enumerate(node_ids)}
+    return node_ids, nid2idx
+
+
 def make_masks(y, per_class_train=20, val_size=500, test_size=1000, seed=0):
     N = y.shape[0]
     rng = np.random.default_rng(seed)
