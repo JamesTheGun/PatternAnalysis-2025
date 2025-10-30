@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn import GCNConv, SAGEConv, Sequential
 
 
 class GraphConvolutionalNetwork(nn.Module):
@@ -29,21 +29,49 @@ class GraphConvolutionalNetwork(nn.Module):
 
 
 class blockGCN(nn.Module):
-    def __init__(self, block_layer_count=4, block_layer_size=64, block_count=5, p=0.75):
+    def __init__(
+        self,
+        in_dim: int,
+        out_dim: int,
+        block_layer_count=4,
+        block_layer_size=64,
+        block_count=5,
+        p=0.75,
+    ):
         super().__init__()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.to(device)
         self.block_layer_count = block_layer_count
         self.block_layer_size = block_layer_size
         self.block_count = block_count
+        self.in_dim = in_dim
+        self.out_dim = out_dim
         self.p = p
+        self.drop = nn.Dropout(p)
+
+    def __post_init__(self):
+        self._make_conv_in()
+        self._make_conv_out()
+        self._make_blocks()
 
     class block(nn.Module):
-        def __init__(self, block_layer_count=5, layer_size=64, p=0.75):
+        def __init__(
+            self,
+            block_layer_count=5,
+            layer_size=64,
+            p=0.75,
+        ):
             super().__init__()
             self.p = p
-            self.layers = [
-                GCNConv(layer_size, layer_size, normalize=True, cached=True)
-                for i in range(block_layer_count)
-            ]
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.to(device)
+            self.layers = nn.ModuleList(
+                [
+                    GCNConv(layer_size, layer_size, normalize=True, cached=True)
+                    for i in range(block_layer_count)
+                ]
+            )
+            self.drop = nn.Dropout(p)
 
         def forward(self, x, edge_index):
             for layer in self.layers:
@@ -52,14 +80,31 @@ class blockGCN(nn.Module):
             self.drop = nn.Dropout(self.p)
             return x
 
-    def make_blocks(self):
-        self.blocks = [
-            self.block(self.block_layer_count, self.block_layer_size, self.p)
-        ]
+    def _make_blocks(self):
+        self.blocks = nn.ModuleList(
+            [
+                self.block(self.block_layer_count, self.block_layer_size, self.p)
+                for block in range(self.block_count)
+            ]
+        )
+
+    def _make_conv_in(self):
+        self.conv_in = GCNConv(
+            self.in_dim, self.block_layer_size, normalize=True, cached=True
+        )
+
+    def _make_conv_out(self):
+        self.conv_out = GCNConv(
+            self.block_layer_size, self.out_dim, normalize=True, cached=True
+        )
 
     def forward(self, x, edge_index):
+        x = self.conv_in(x, edge_index).relu()
+        x = self.drop(x)
         for block in self.blocks:
             x = block.forward(x, edge_index)
+        x = self.conv_out(x, edge_index).relu()
+        x = self.drop(x)
         return x
 
 
