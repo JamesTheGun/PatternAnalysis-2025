@@ -39,8 +39,6 @@ class blockGCN(nn.Module):
         p=0.75,
     ):
         super().__init__()
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.to(device)
         self.block_layer_count = block_layer_count
         self.block_layer_size = block_layer_size
         self.block_count = block_count
@@ -48,8 +46,9 @@ class blockGCN(nn.Module):
         self.out_dim = out_dim
         self.p = p
         self.drop = nn.Dropout(p)
+        self.construct_shit()
 
-    def __post_init__(self):
+    def construct_shit(self):
         self._make_conv_in()
         self._make_conv_out()
         self._make_blocks()
@@ -63,8 +62,6 @@ class blockGCN(nn.Module):
         ):
             super().__init__()
             self.p = p
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.to(device)
             self.layers = nn.ModuleList(
                 [
                     GCNConv(layer_size, layer_size, normalize=True, cached=True)

@@ -13,6 +13,8 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import (
 )
 from recognition.gnn_facebookpages_s4749422_James_Brunton.modules import (
     GraphConvolutionalNetwork as GCN,
+    GraphSAGE as GSAGE,
+    blockGCN as BGCN,
 )
 from torch_geometric.data import Data
 
@@ -44,11 +46,17 @@ def main():
 
     in_dim = data.num_features
     out_dim = int(data.y.max().item() + 1)
-    model = GCN(in_dim, hidden=128, out_dim=out_dim, p=0.5).to(device)
+    model = BGCN(in_dim, out_dim, block_count=1)
+    model._make_blocks()
+    # model = GCN(in_dim, hidden=128, out_dim=out_dim, p=0.75).to(device)
 
-    opt = torch.optim.Adam(model.parameters(), lr=0.1, weight_decay=0.05)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
 
-    for epoch in range(1, 201):
+    opt = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.05)
+
+    for epoch in range(1, 9000):
+        # print("epoch do be epoching")
         model.train()
         opt.zero_grad()
         logits = model(data.x, data.edge_index)
@@ -80,7 +88,7 @@ def main():
     )
     print("saved gcn_checkpoint.pt")
 
-    sample_nids = [554, 9218, 10772]
+    sample_nids = [554, 9218, 10772, 9283, 3324, 1111, 123, 9217]
     with torch.no_grad():
         probs = softmax(logits, dim=1)
         for nid in sample_nids:
