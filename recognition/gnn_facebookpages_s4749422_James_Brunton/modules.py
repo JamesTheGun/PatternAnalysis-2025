@@ -29,27 +29,38 @@ class GraphConvolutionalNetwork(nn.Module):
 
 
 class blockGCN(nn.Module):
-    def __init__(self, block_layer_count = 4, block_layer_size = 64, block_count = 5, p = 0.75):
+    def __init__(self, block_layer_count=4, block_layer_size=64, block_count=5, p=0.75):
+        super().__init__()
         self.block_layer_count = block_layer_count
         self.block_layer_size = block_layer_size
         self.block_count = block_count
         self.p = p
 
     class block(nn.Module):
-        def __init__(self, block_layer_count = 5, layer_size = 64, p=0.75):
-            self.layers = [GCNConv(layer_size, layer_size, normalize=True, cached=True) for i in range(block_layer_count)]
-        
+        def __init__(self, block_layer_count=5, layer_size=64, p=0.75):
+            super().__init__()
+            self.p = p
+            self.layers = [
+                GCNConv(layer_size, layer_size, normalize=True, cached=True)
+                for i in range(block_layer_count)
+            ]
+
         def forward(self, x, edge_index):
             for layer in self.layers:
                 x = layer(x, edge_index).relu()
+                x = self.drop(x)
+            self.drop = nn.Dropout(self.p)
             return x
-        
+
     def make_blocks(self):
-        self.blocks = [self.block(self.block_layer_count, self.block_layer_size, self.p)]
-        
-    def forward(self):
+        self.blocks = [
+            self.block(self.block_layer_count, self.block_layer_size, self.p)
+        ]
+
+    def forward(self, x, edge_index):
         for block in self.blocks:
-            
+            x = block.forward(x, edge_index)
+        return x
 
 
 class GraphSAGE(nn.Module):
