@@ -1,7 +1,10 @@
+from logging import raiseExceptions
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv, Sequential
 import torch.nn.functional as F
+
+STUPIDLY_LARGE_LAYER_SIZE = 512
 
 
 class GraphConvolutionalNetwork(nn.Module):
@@ -56,20 +59,74 @@ class blockGCN(nn.Module):
 
     class block(nn.Module):
         def __init__(
-            self,
-            block_layer_count=5,
-            layer_size=64,
-            p=0.75,
+            self, block_layer_count=5, layer_size=64, p=0.75, expansion_ratio=1.4
         ):
             super().__init__()
+            self.layer_size = layer_size
+            self.block_layer_count = block_layer_count
+            self.last_layer_size = layer_size
             self.p = p
-            self.layers = nn.ModuleList(
+            self.expansion_ratio = expansion_ratio
+            self.layers = self.build_layers()
+            self.drop = nn.Dropout(p)
+
+        def build_layers(self):
+            return nn.ModuleList(
                 [
-                    GCNConv(layer_size, layer_size, normalize=True, cached=True)
-                    for i in range(block_layer_count)
+                    GCNConv(
+                        self.layer_size, self.layer_size, normalize=True, cached=True
+                    )
+                    for layer in range(self.block_layer_count)
                 ]
             )
-            self.drop = nn.Dropout(p)
+
+        def build_expansion_layers(self, expansion_layer_count, starting_size):
+            expansion_layers = []
+            this_layer_size = starting_size
+            for layer in range(expansion_layer_count):
+                next_layer_size = this_layer_size * self.expansion_ratio
+                this_layer = GCNConv(
+                    this_layer_size, next_layer_size, normalize=True, cached=True
+                )
+                this_layer_size = next_layer_size
+                if next_layer_size > STUPIDLY_LARGE_LAYER_SIZE:
+                    raise ValueError(
+                        "You passed a silly expansion ratio for the number of layers you want... make it smaller!"
+                    )
+                expansion_layers.append(this_layer)
+            return expansion_layers, this_layer_size
+
+        def build_constriction_layers(self, current_size, ending_size):
+            layers = []
+            in_ch = int(round(current_size))
+            end_ch = int(round(ending_size))
+            ratio = float(self.expansion_ratio)
+            if ratio <= 1.0:
+                ratio = 1.0001
+
+            while in_ch > end_ch:
+                out_ch = max(end_ch, int(round(in_ch / ratio)))
+                if out_ch == in_ch:
+                    out_ch = max(end_ch, in_ch - 1)
+                layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
+                in_ch = out_ch
+
+            return layers
+
+        def build_layers_hourglass(self):
+            this_layer_size = self.layer_size
+            expansion_layer_count = self.block_layer_count / 2
+            constriction_layer_count = self.block_layer_count - expansion_layer_count
+            expansion_layers, expansion_ending_size = self.build_expansion_layers(
+                expansion_layer_count, this_layer_size
+            )
+            constriction_layers = self.build_constriction_layers(
+                expansion_ending_size, self.layer_size
+            )
+
+            all_layers = expansion_layers + constriction_layers
+
+            self.blocks = nn.ModuleList(all_layers)
 
         def forward(self, x, edge_index):
             # arn't these rediduals buetiful?? like it should not be this simple
