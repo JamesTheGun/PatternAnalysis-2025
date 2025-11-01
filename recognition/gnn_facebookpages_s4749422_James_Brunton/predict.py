@@ -1,6 +1,5 @@
 import torch
 from torch.nn.functional import cross_entropy
-from torch_geometric.data import Data
 import numpy as np
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.visualisation import (
@@ -11,16 +10,7 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.visualisation import (
     plot_training_curve,
 )
 
-from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import (
-    _load_edges,
-    _load_targets,
-    _load_features,
-    make_masks,
-    build_X,
-    build_y,
-    build_edge_index,
-    build_index,
-)
+from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import get_data
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.modules import (
     GraphConvolutionalNetwork as GCN,
@@ -45,26 +35,7 @@ def tempered_class_weights(y, train_mask, C, alpha=0.5):
 
 
 def main():
-    edges = _load_edges()  # expects columns: id_1, id_2
-    targets = _load_targets()  # expects columns: id, label
-    features = _load_features()  # pd.Series: index=node_id, value=list[int]
-
-    node_ids, nid2idx = build_index(features, targets, edges)
-    idx2nid = {idx: nid for nid, idx in nid2idx.items()}  # keep for reporting
-    x = build_X(features, node_ids)  # [N,F] float32
-    y, label_names = build_y(targets, nid2idx)  # [N] int64 (−1 for unlabeled)
-    ei = build_edge_index(edges, nid2idx)  # [2,E] int64
-
-    train_mask, val_mask, test_mask = make_masks(y)
-
-    data = Data(
-        x=x,
-        edge_index=ei,
-        y=y,
-        train_mask=train_mask,
-        val_mask=val_mask,
-        test_mask=test_mask,
-    )
+    data, label_names, y = get_data()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     data = data.to(device)
@@ -111,7 +82,6 @@ def main():
         if epoch % 20 == 0:
             print(f"[{epoch:03d}] loss={loss.item():.4f} val_acc={val_acc:.3f}")
 
-    # --- final eval + predictions ---
     model.eval()
     with torch.no_grad():
         logits = model(data.x, data.edge_index)
@@ -120,12 +90,9 @@ def main():
     test_mask = data.test_mask
     test_acc = (pred[test_mask] == data.y[test_mask]).float().mean().item()
     print(f"\nTEST ACC: {test_acc:.3f}")
-
-    # <<< NEW: plots — adjust output paths as you like
-    # 1) Training curve
+    # Plotting
     plot_training_curve(history, out_path="figs/training_curve.png")
 
-    # 2) Confusion matrix (test split only)
     plot_confusion_matrix_from_preds(
         y_true=data.y[test_mask].detach().cpu(),
         y_pred=pred[test_mask].detach().cpu(),
@@ -135,7 +102,6 @@ def main():
         out_path="figs/confusion_matrix.png",
     )
 
-    # 3) Embeddings → t-SNE / UMAP on the test split
     Z = get_node_embeddings(model, data, prefer_penultimate=True)
 
     tsne_plot_from_embeddings(
