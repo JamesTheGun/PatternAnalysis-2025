@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv, Sequential
+import torch.nn.functional as F
 
 
 class GraphConvolutionalNetwork(nn.Module):
@@ -75,7 +76,7 @@ class blockGCN(nn.Module):
             # also torch tensors don't need copy?? seems like vudoo
             x_in = x
             for layer in self.layers:
-                x = layer(x, edge_index).relu()
+                x = F.leaky_relu(layer(x, edge_index), negative_slope=0.5)
                 x = self.drop(x)
             x = x + x_in
             return x
