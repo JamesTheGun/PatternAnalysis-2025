@@ -11,20 +11,12 @@ STUPIDLY_LARGE_LAYER_SIZE = 512
 class GraphConvolutionalNetwork(nn.Module):
     def __init__(self, in_dim: int, hidden: int, out_dim: int, p: float = 0.6):
         super().__init__()
-        # does all the graph maths for us...
-        # we make to blocks
         self.conv1 = GCNConv(in_dim, hidden, normalize=True, cached=True)
         self.conv2 = GCNConv(hidden, hidden, normalize=True, cached=True)
         self.conv3 = GCNConv(hidden, out_dim, normalize=True, cached=True)
-        # by setting some activation to zero, we can prevent overfitting... nuerons are less over-dependent on other neurons
-        # also acts a way of aproximating multiple networks when we evaluate the layer multiple times...
         self.drop = nn.Dropout(p)
 
-    # implement forward...
     def forward(self, x, edge_index):
-        # x with shape: [num_nodes, in_dim]
-        # edge_index are the actual connections...
-        # relu to find non-linear patterns
         x = self.conv1(x, edge_index).relu()
         x = self.drop(x)
         x = self.conv2(x, edge_index).relu()
@@ -43,6 +35,7 @@ class blockGCN(nn.Module):
         block_count=5,
         p=0.75,
         is_hour_glass=False,
+        expansion_ratio=1.3,
     ):
         self.block_layer_count = block_layer_count
         self.block_layer_size = block_layer_size
@@ -51,6 +44,7 @@ class blockGCN(nn.Module):
         self.out_dim = out_dim
         self.p = p
         self.is_hour_glass = is_hour_glass
+        self.expansion_ratio = expansion_ratio
         super().__init__()
         self._construct_shit()
         self.drop = nn.Dropout(p)
@@ -70,86 +64,121 @@ class blockGCN(nn.Module):
             is_hour_glass=False,
         ):
             super().__init__()
-            self.layer_size = layer_size
-            self.block_layer_count = block_layer_count
-            self.last_layer_size = layer_size
+            self.layer_size = int(layer_size)
+            self.block_layer_count = int(block_layer_count)
             self.p = p
-            self.expansion_ratio = expansion_ratio
-            self.is_hour_glass = is_hour_glass
-
-            print(self.is_hour_glass)
-            self.layers = self.build_layers()
+            self.expansion_ratio = float(expansion_ratio)
+            self.is_hour_glass = bool(is_hour_glass)
             self.drop = nn.Dropout(p)
+            # Build and assign layers
+            self.layers = self.build_layers()
 
         def build_layers(self):
-            print("bruh 2/./0")
+            # Return a ModuleList
             if self.is_hour_glass:
-                print("bruh")
-                self.build_layers_hourglass()
+                return self.build_layers_hourglass()
             else:
-                self.build_constant_layers()
+                return self.build_constant_layers()
 
         def build_constant_layers(self):
-            self.layers = nn.ModuleList(
+            return nn.ModuleList(
                 [
                     GCNConv(
                         self.layer_size, self.layer_size, normalize=True, cached=True
                     )
-                    for layer in range(self.block_layer_count)
+                    for _ in range(self.block_layer_count)
                 ]
             )
 
-        def build_expansion_layers(self, expansion_layer_count, starting_size):
-            expansion_layers = []
-            this_layer_size = starting_size
-            for layer in range(expansion_layer_count):
-                next_layer_size = this_layer_size * self.expansion_ratio
-                this_layer = GCNConv(
-                    this_layer_size, next_layer_size, normalize=True, cached=True
-                )
-                this_layer_size = next_layer_size
-                if next_layer_size > STUPIDLY_LARGE_LAYER_SIZE:
-                    raise ValueError(
-                        "You passed a silly expansion ratio for the number of layers you want... make it smaller!"
-                    )
-                expansion_layers.append(this_layer)
-            return expansion_layers, this_layer_size
+        # ----- helpers that work for ratio > 1 (grow) and ratio < 1 (shrink) -----
 
-        def build_constriction_layers(self, current_size, ending_size):
+        def _progressive_layers(self, steps, starting_size, ratio):
+            """
+            Multiply channels by `ratio` for `steps`, enforcing at least +/-1 change.
+            Returns (layers, final_size).
+            """
             layers = []
-            in_ch = int(round(current_size))
-            end_ch = int(round(ending_size))
-            ratio = float(self.expansion_ratio)
-            if ratio <= 1.0:
-                ratio = 1.0001
-
-            while in_ch > end_ch:
-                out_ch = max(end_ch, int(round(in_ch / ratio)))
+            in_ch = int(starting_size)
+            r = float(ratio)
+            # Guard against degenerate ratios
+            if r == 1.0:
+                r = 1.0001
+            for _ in range(int(steps)):
+                # proposed new width
+                out_ch = int(round(in_ch * r))
+                # force a change of at least 1 unit toward the intended direction
                 if out_ch == in_ch:
-                    out_ch = max(end_ch, in_ch - 1)
+                    out_ch = in_ch + (1 if r > 1.0 else -1)
+                # keep within sane bounds
+                out_ch = max(1, min(out_ch, STUPIDLY_LARGE_LAYER_SIZE))
                 layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
                 in_ch = out_ch
+            return layers, in_ch
+
+        def _towards_target_layers(self, current_size, target_size, ratio_hint):
+            """
+            Build layers that move monotonically from current_size to target_size.
+            Uses ratio_hint (>1 means multiplicative growth per step; <1 means shrink).
+            """
+            layers = []
+            in_ch = int(current_size)
+            tgt = int(target_size)
+
+            if in_ch == tgt:
+                return layers
+
+            # choose a multiplier > 1 for growth steps
+            r = float(ratio_hint)
+            if r == 1.0:
+                r = 1.0001
+            grow_mult = r if r > 1.0 else (1.0 / r if r > 0.0 else 2.0)
+
+            if in_ch < tgt:
+                # grow until we hit target
+                while in_ch < tgt:
+                    out_ch = int(round(in_ch * grow_mult))
+                    if out_ch <= in_ch:
+                        out_ch = in_ch + 1
+                    out_ch = min(out_ch, tgt, STUPIDLY_LARGE_LAYER_SIZE)
+                    layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
+                    in_ch = out_ch
+            else:
+                # shrink until we hit target
+                while in_ch > tgt:
+                    out_ch = int(round(in_ch / grow_mult))
+                    if out_ch >= in_ch:
+                        out_ch = in_ch - 1
+                    out_ch = max(out_ch, tgt, 1)
+                    layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
+                    in_ch = out_ch
 
             return layers
 
+        # ----- hourglass that supports expansion_ratio < 1 -----
+
         def build_layers_hourglass(self):
-            this_layer_size = self.layer_size
-            expansion_layer_count = self.block_layer_count / 2
-            expansion_layers, expansion_ending_size = self.build_expansion_layers(
-                expansion_layer_count, this_layer_size
+            base = int(self.layer_size)
+            up_count = self.block_layer_count // 2  # integer division
+
+            # First half: move by multiplying with ratio (grow if >1, shrink if <1)
+            up_layers, mid = self._progressive_layers(
+                up_count, base, self.expansion_ratio
             )
-            constriction_layers = self.build_constriction_layers(
-                expansion_ending_size, self.layer_size
+
+            # Second half: return to base width monotonically
+            # If ratio > 1 we will constrict; if ratio < 1 we will expand back.
+            down_layers = self._towards_target_layers(
+                current_size=mid, target_size=base, ratio_hint=self.expansion_ratio
             )
-            all_layers = expansion_layers + constriction_layers
-            print("wtf")
-            self.layers = nn.ModuleList(all_layers)
+
+            return nn.ModuleList(up_layers + down_layers)
 
         def forward(self, x, edge_index):
             x_in = x
             for layer in self.layers:
                 x = F.leaky_relu(layer(x, edge_index), negative_slope=0.1)
                 x = self.drop(x)
+            # residual: final width equals base `layer_size`, so shapes match
             x = x + x_in
             return x
 
@@ -157,12 +186,13 @@ class blockGCN(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 self.block(
-                    self.block_layer_count,
-                    self.block_layer_size,
-                    self.p,
-                    self.is_hour_glass,
+                    block_layer_count=self.block_layer_count,
+                    layer_size=self.block_layer_size,
+                    p=self.p,
+                    expansion_ratio=self.expansion_ratio,
+                    is_hour_glass=self.is_hour_glass,
                 )
-                for block in range(self.block_count)
+                for _ in range(self.block_count)
             ]
         )
 
@@ -195,9 +225,6 @@ class GraphSAGE(nn.Module):
         self.drop = nn.Dropout(p)
 
     def forward(self, x, edge_index):
-        # x with shape: [num_nodes, in_dim]
-        # edge_index are the actual connections...
-        # relu to find non-linear patterns
         x = self.conv1(x, edge_index).relu()
         x = self.drop(x)
         x = self.conv2(x, edge_index).relu()
