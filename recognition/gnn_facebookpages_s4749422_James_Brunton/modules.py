@@ -1,4 +1,5 @@
 from logging import raiseExceptions
+from re import L
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv, Sequential
@@ -41,16 +42,18 @@ class blockGCN(nn.Module):
         block_layer_size=64,
         block_count=5,
         p=0.75,
+        is_hour_glass=False,
     ):
-        super().__init__()
         self.block_layer_count = block_layer_count
         self.block_layer_size = block_layer_size
         self.block_count = block_count
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.p = p
-        self.drop = nn.Dropout(p)
+        self.is_hour_glass = is_hour_glass
+        super().__init__()
         self._construct_shit()
+        self.drop = nn.Dropout(p)
 
     def _construct_shit(self):
         self._make_conv_in()
@@ -59,7 +62,12 @@ class blockGCN(nn.Module):
 
     class block(nn.Module):
         def __init__(
-            self, block_layer_count=5, layer_size=64, p=0.75, expansion_ratio=1.4
+            self,
+            block_layer_count=5,
+            layer_size=64,
+            p=0.75,
+            expansion_ratio=1.4,
+            is_hour_glass=False,
         ):
             super().__init__()
             self.layer_size = layer_size
@@ -67,11 +75,22 @@ class blockGCN(nn.Module):
             self.last_layer_size = layer_size
             self.p = p
             self.expansion_ratio = expansion_ratio
+            self.is_hour_glass = is_hour_glass
+
+            print(self.is_hour_glass)
             self.layers = self.build_layers()
             self.drop = nn.Dropout(p)
 
         def build_layers(self):
-            return nn.ModuleList(
+            print("bruh 2/./0")
+            if self.is_hour_glass:
+                print("bruh")
+                self.build_layers_hourglass()
+            else:
+                self.build_constant_layers()
+
+        def build_constant_layers(self):
+            self.layers = nn.ModuleList(
                 [
                     GCNConv(
                         self.layer_size, self.layer_size, normalize=True, cached=True
@@ -116,21 +135,17 @@ class blockGCN(nn.Module):
         def build_layers_hourglass(self):
             this_layer_size = self.layer_size
             expansion_layer_count = self.block_layer_count / 2
-            constriction_layer_count = self.block_layer_count - expansion_layer_count
             expansion_layers, expansion_ending_size = self.build_expansion_layers(
                 expansion_layer_count, this_layer_size
             )
             constriction_layers = self.build_constriction_layers(
                 expansion_ending_size, self.layer_size
             )
-
             all_layers = expansion_layers + constriction_layers
-
-            self.blocks = nn.ModuleList(all_layers)
+            print("wtf")
+            self.layers = nn.ModuleList(all_layers)
 
         def forward(self, x, edge_index):
-            # arn't these rediduals buetiful?? like it should not be this simple
-            # also torch tensors don't need copy?? seems like vudoo
             x_in = x
             for layer in self.layers:
                 x = F.leaky_relu(layer(x, edge_index), negative_slope=0.1)
@@ -141,7 +156,12 @@ class blockGCN(nn.Module):
     def _make_blocks(self):
         self.blocks = nn.ModuleList(
             [
-                self.block(self.block_layer_count, self.block_layer_size, self.p)
+                self.block(
+                    self.block_layer_count,
+                    self.block_layer_size,
+                    self.p,
+                    self.is_hour_glass,
+                )
                 for block in range(self.block_count)
             ]
         )
