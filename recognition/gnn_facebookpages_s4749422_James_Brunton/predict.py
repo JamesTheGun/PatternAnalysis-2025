@@ -46,16 +46,18 @@ def main():
 
     in_dim = data.num_features
     out_dim = int(data.y.max().item() + 1)
-    model = BGCN(in_dim, out_dim, block_count=1)
+    model = BGCN(
+        in_dim, out_dim, block_count=2, block_layer_count=3, block_layer_size=64
+    )
     model._make_blocks()
     # model = GCN(in_dim, hidden=128, out_dim=out_dim, p=0.75).to(device)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
 
-    opt = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.05)
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-1)
 
-    for epoch in range(1, 9000):
+    for epoch in range(1, 200):
         # print("epoch do be epoching")
         model.train()
         opt.zero_grad()

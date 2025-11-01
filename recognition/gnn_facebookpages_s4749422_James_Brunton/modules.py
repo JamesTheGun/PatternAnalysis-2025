@@ -46,9 +46,9 @@ class blockGCN(nn.Module):
         self.out_dim = out_dim
         self.p = p
         self.drop = nn.Dropout(p)
-        self.construct_shit()
+        self._construct_shit()
 
-    def construct_shit(self):
+    def _construct_shit(self):
         self._make_conv_in()
         self._make_conv_out()
         self._make_blocks()
@@ -71,10 +71,13 @@ class blockGCN(nn.Module):
             self.drop = nn.Dropout(p)
 
         def forward(self, x, edge_index):
+            # arn't these rediduals buetiful?? like it should not be this simple
+            # also torch tensors don't need copy?? seems like vudoo
+            x_in = x
             for layer in self.layers:
                 x = layer(x, edge_index).relu()
                 x = self.drop(x)
-            self.drop = nn.Dropout(self.p)
+            x = x + x_in
             return x
 
     def _make_blocks(self):
