@@ -74,7 +74,7 @@ def build_index(features, targets, edges):
     return node_ids, nid2idx
 
 
-def make_masks(y, per_class_train=20, val_size=500, test_size=1000, seed=0):
+def make_masks(y, per_class_train=64, val_size=500, test_size=1000, seed=0):
     N = y.shape[0]
     rng = np.random.default_rng(seed)
     train = np.zeros(N, dtype=bool)
