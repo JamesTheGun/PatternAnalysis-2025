@@ -41,6 +41,12 @@ Model configuration is defined in `constants.py`.
 By default, a U-Net configuration is used for the blocks — this architecture is shown to be effective for graph neural networks (Gao, H., & Ji, S. (2019). *Graph U-Nets.* In Proceedings of the 36th International Conference on Machine Learning (ICML 2019), pp. 2083–2092) and was found to outperform strictly hourglass configurations experimentally.  
 All other model parameters were tuned experimentally. In 'modules.py', blockGCN uses sub classes 
 
+### Environment setup
+```bash
+pip install -r requirements.txt
+```
+download the facebook large dataset (https://snap.stanford.edu/data/facebook-large-page-page-network.html) and extract into PatternAnalysis-2025/recognition/gnn_facebookpages_s4749422_James_Brunton/data. Ensure there the csv/json files are located in /faceboook_large within this folder. Files should be musae_facebook_edges.csv, musae_facebook_features.json, musae_facebook_target.csv.
+
 ## Usage
 All parameters should be adjusted in `parameters.py`.
 To train the model from scratch, simply run:
@@ -52,11 +58,6 @@ python train.py
 To predict using the pre-trained model, simply run:
 ```bash
 python predict.py
-```
-
-### Environment setup
-```bash
-pip install -r requirements.txt
 ```
 ## Results and Discussion
 

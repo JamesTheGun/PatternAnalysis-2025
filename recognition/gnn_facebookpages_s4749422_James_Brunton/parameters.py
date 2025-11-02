@@ -14,7 +14,7 @@ STUPIDLY_LARGE_LAYER_SIZE = (
 )
 EPOCHS = 300
 EPOCH_PRINT_INTERVAL = 20  # When do we print training status?
-LEARNING_RATE = 1e-4  # model learning rate
+LEARNING_RATE = 2e-4  # model learning rate
 WIEGHT_DECAY = 0.1
 SELECTED_MODEL = "BGCN"  # BGCN  or "GCN" or "SAGE"
 
@@ -23,9 +23,9 @@ BGCN_PARAMS = {
     "block_layer_count": 5,
     "block_layer_size": 256,
     "block_count": 2,
-    "p": 0.25,  # drop-out...
+    "p": 0.5,  # drop-out...
     "is_hour_glass": True,
-    "expansion_ratio": 0.5,
+    "expansion_ratio": 0.75,
 }
 GCN_PARAMS = {
     "hidden": 128,

@@ -73,6 +73,12 @@ class blockGCN(nn.Module):
         self._make_conv_out()
         self._make_blocks()
 
+    # Nested class representing a block in the model
+    # supports expansion ratios greater than zero
+    # if less than 1, we have a unet, otherwise we have
+    # hour glass archetecture. Also supports no expansion
+    # ratio/hourglass == None if we want constant layer
+    # size...
     class block(nn.Module):
         def __init__(
             self,
@@ -80,7 +86,7 @@ class blockGCN(nn.Module):
             layer_size=64,
             p=0.75,
             expansion_ratio=1.4,
-            is_hour_glass=False,
+            is_hour_glass=True,
         ):
             super().__init__()
             self.layer_size = int(layer_size)
@@ -123,6 +129,7 @@ class blockGCN(nn.Module):
             return layers, in_ch
 
         def _towards_target_layers(self, current_size, target_size, ratio_hint):
+            # shinks/expands back towards a target layer size...
             layers = []
             in_ch = int(current_size)
             tgt = int(target_size)
