@@ -57,7 +57,7 @@ python predict.py
 ### Environment setup
 ```bash
 pip install -r requirements.txt
-
+```
 ## Results and Discussion
 
 | Model | Val Accuracy | Test Accuracy | Notes |
