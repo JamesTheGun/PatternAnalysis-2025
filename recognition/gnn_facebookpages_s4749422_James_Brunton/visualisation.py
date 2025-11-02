@@ -252,7 +252,7 @@ def plot_confusion_matrix_from_preds(
                     ha="center",
                     va="center",
                     fontsize=8,
-                    color="white" if val > cm.max() * 0.6 else "black",
+                    color="black" if val > cm.max() * 0.6 else "white",
                 )
 
     plt.tight_layout()
@@ -272,7 +272,7 @@ def plot_training_curve(history, out_path=None):
     history = dict with keys like "epoch", "loss", "val_acc"
     """
     if out_path:
-        out_path = out_path + "//out_path"
+        out_path = out_path + "//training_curve"
     ep = history.get("epoch", [])
     loss = history.get("loss", [])
     val = history.get("val_acc", [])

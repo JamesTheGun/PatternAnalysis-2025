@@ -3,7 +3,7 @@
 This project implements and compares multiple Graph Neural Network architectures for semi-supervised node classification on the Facebook Large Page–Page Network dataset.
 
 ## Problem and Approach
-Given a large directed graph with 128-dimensional features and a small sample of labeled nodes from the Facebook Large Page–Page Network (SNAP: Network Datasets: Wikipedia Article Networks), the goal is to predict unlabeled node classes as accurately as possible.  
+Given a large directed graph with 128-dimensional features and a small sample of labeled nodes from the Facebook Large Page–Page Network (SNAP: Network Datasets: Wikipedia Article Networks at https://snap.stanford.edu/data/facebook-large-page-page-network.html), the goal is to predict unlabeled node classes as accurately as possible.  
 This problem was approached using several neural network architectures and techniques: a simple Graph Convolutional Network with 3 layers (`GraphConvolutionalNetwork` in `modules.py`), a Graph Sample and Aggregate network (`GraphSAGE` in `modules.py`), and a deep block Graph Neural Network with residuals and a variable hourglass diameter (`blockGCN` in `modules.py`).  
 The first two networks establish a performance baseline, achieving around 75% accuracy for the non-SAGE network and around 70% for the SAGE network, using 128 labeled data points per class and 1000 nodes per class. The block GCN achieves up to 90% accuracy.
 
