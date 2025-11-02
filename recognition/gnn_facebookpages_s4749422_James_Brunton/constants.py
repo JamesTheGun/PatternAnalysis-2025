@@ -22,6 +22,15 @@ BGCN_PARAMS = {
     "is_hour_glass": True,
     "expansion_ratio": 0.5,
 }
+GCN_PARAMS = {
+    "hidden": 128,
+    "p": 0.6,
+}
+
+SAGE_PARAMS = {
+    "hidden": 128,
+    "p": 0.5,
+}
 # data
 LABELED_PER_CLASS = 128
 VAL_SIZE = 500

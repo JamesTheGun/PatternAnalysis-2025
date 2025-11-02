@@ -1,12 +1,11 @@
-from logging import raiseExceptions
-from re import L
-import torch
 import torch.nn as nn
-from torch_geometric.nn import GCNConv, SAGEConv, Sequential
+from torch_geometric.nn import GCNConv, SAGEConv
 import torch.nn.functional as F
 from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
     STUPIDLY_LARGE_LAYER_SIZE,
     BGCN_PARAMS,
+    GCN_PARAMS,
+    SAGE_PARAMS,
 )
 
 
@@ -215,26 +214,28 @@ def get_model(in_dim, out_dim, device, model_type="bgcn", **kwargs):
 
     if model_type in {"bgcn", "blockgcn"}:
         params = BGCN_PARAMS.copy()
-        params.update(kwargs)  # allow overrides
+        params.update(kwargs)
         model = blockGCN(in_dim=in_dim, out_dim=out_dim, **params)
 
     elif model_type == "gcn":
+        params = GCN_PARAMS.copy()
+        params.update(kwargs)
         model = GraphConvolutionalNetwork(
             in_dim=in_dim,
-            hidden=kwargs.get("hidden", 128),
             out_dim=out_dim,
-            p=kwargs.get("p", 0.6),
+            **params,
         )
 
-    elif model_type == "sage":
+    elif model_type in {"sage", "graphsage"}:
+        params = SAGE_PARAMS.copy()
+        params.update(kwargs)
         model = GraphSAGE(
             in_dim=in_dim,
-            hidden=kwargs.get("hidden", 128),
             out_dim=out_dim,
-            p=kwargs.get("p", 0.5),
+            **params,
         )
 
     else:
-        raise ValueError(f"Unknown model_type '{model_type}'.")
+        raise ValueError(f"Unknown model_type: {model_type}")
 
     return model.to(device)
