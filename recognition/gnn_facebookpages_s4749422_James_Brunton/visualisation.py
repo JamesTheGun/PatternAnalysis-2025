@@ -1,5 +1,3 @@
-# viz.py (or paste above main)
-
 import os
 import math
 import numpy as np
@@ -47,10 +45,8 @@ def get_node_embeddings(model, data, prefer_penultimate=True):
     penultimate = {}
 
     if prefer_penultimate:
-        # Try to hook the last linear/conv module in model
         last_module = None
         for m in model.modules():
-            # Pick modules that usually produce final hidden representations
             if any(
                 k in m.__class__.__name__.lower()
                 for k in ["linear", "conv", "sage", "gcn"]
@@ -68,19 +64,13 @@ def get_node_embeddings(model, data, prefer_penultimate=True):
 
             h.remove()
 
-    # Prefer penultimate if caught and is not the final logits
     if "z" in penultimate:
         z = penultimate["z"]
-        # If it's logits-sized, it's still fine; otherwise perfect.
         return z.detach().cpu().float()
 
-    # Fallback to logits
     with torch.no_grad():
         logits = model(data.x, data.edge_index)
     return logits.detach().cpu().float()
-
-
-# --- dimensionality reduction plots ---------------------------------------
 
 
 def plot_2d_embedding(
@@ -128,7 +118,7 @@ def plot_2d_embedding(
     plt.title(title)
     plt.xticks([])
     plt.yticks([])
-    if n_classes <= 20:  # avoid unreadable legends
+    if n_classes <= 20:
         plt.legend(loc="best", fontsize=8, markerscale=1.6, frameon=True)
     plt.tight_layout()
 
@@ -154,7 +144,6 @@ def tsne_plot_from_embeddings(
     Runs t-SNE on embeddings Z [N,D] and calls plot_2d_embedding.
     """
     Z = _to_numpy(Z)
-    # Subsample if extremely large for speed, but keep mask filtering first.
     sel = _mask_or_all(mask, len(Z))
     Zsel = Z[sel]
     ysel = _to_numpy(y)[sel]
@@ -165,7 +154,6 @@ def tsne_plot_from_embeddings(
         perplexity=min(perplexity, max(5, len(Zsel) // 50)),
         random_state=random_state,
     ).fit_transform(Zsel)
-    # Reuse plot function, masking already applied by selecting Zsel/ysel directly
     plot_2d_embedding(
         Z2,
         ysel,
@@ -283,6 +271,8 @@ def plot_training_curve(history, out_path=None):
     """
     history = dict with keys like "epoch", "loss", "val_acc"
     """
+    if out_path:
+        out_path = out_path + "//out_path"
     ep = history.get("epoch", [])
     loss = history.get("loss", [])
     val = history.get("val_acc", [])
@@ -314,8 +304,8 @@ def generate_visuals(data, test_mask, pred, label_names, model, history=None):
         y_pred=pred[test_mask].detach().cpu(),
         label_names=label_names,
         normalize=True,
-        title="Confusion matrix (test)",
-        out_path="figs/confusion_matrix.png",
+        title="Confusion matrix",
+        out_path=VIS_OUT_PATH + "//confusion_matrix",
     )
 
     Z = get_node_embeddings(model, data, prefer_penultimate=True)
@@ -325,8 +315,8 @@ def generate_visuals(data, test_mask, pred, label_names, model, history=None):
         y=data.y,
         mask=test_mask,
         label_names=label_names,
-        title_prefix="t-SNE (test)",
-        out_path=VIS_OUT_PATH,
+        title_prefix="t-SNE",
+        out_path=VIS_OUT_PATH + "//t_SNE",
         perplexity=30,
         random_state=0,
     )
@@ -336,8 +326,8 @@ def generate_visuals(data, test_mask, pred, label_names, model, history=None):
         y=data.y,
         mask=test_mask,
         label_names=label_names,
-        title_prefix="UMAP (test)",
-        out_path=VIS_OUT_PATH,
+        title_prefix="UMAP",
+        out_path=VIS_OUT_PATH + "//UMAP",
         n_neighbors=15,
         min_dist=0.1,
         random_state=0,

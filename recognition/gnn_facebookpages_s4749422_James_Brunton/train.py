@@ -11,6 +11,13 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import get_dat
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.modules import get_model
 
+from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+    EPOCHS,
+    EPOCH_PRINT_INTERVAL,
+    LEARNING_RATE,
+    WIEGHT_DECAY,
+)
+
 
 def tempered_class_weights(y, train_mask, C, alpha=0.5):
     """
@@ -35,13 +42,16 @@ def main():
 
     in_dim = data.num_features
     out_dim = int(data.y.max().item() + 1)
+
     model = get_model(in_dim=in_dim, out_dim=out_dim, device=device)
 
-    opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.1)
+    opt = torch.optim.AdamW(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=WIEGHT_DECAY
+    )
 
     history = {"epoch": [], "loss": [], "val_acc": []}
 
-    for epoch in range(1, 300):
+    for epoch in range(1, EPOCHS):
         model.train()
         opt.zero_grad()
         logits = model(data.x, data.edge_index)
@@ -63,7 +73,7 @@ def main():
         history["loss"].append(loss.item())
         history["val_acc"].append(val_acc)
 
-        if epoch % 20 == 0:
+        if epoch % EPOCH_PRINT_INTERVAL == 0:
             print(f"[{epoch:03d}] loss={loss.item():.4f} val_acc={val_acc:.3f}")
 
     model.eval()
@@ -73,8 +83,9 @@ def main():
 
     test_mask = data.test_mask
     test_acc = (pred[test_mask] == data.y[test_mask]).float().mean().item()
-    print(f"\nTEST ACC: {test_acc:.3f}")
+    print(f"\nTEST ACCURACY: {test_acc:.3f}")
 
+    print("generated")
     generate_visuals(
         data=data,
         test_mask=test_mask,

@@ -3,6 +3,11 @@ import torch
 import numpy as np
 import os
 from torch_geometric.data import Data
+from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+    LABELED_PER_CLASS,
+    VAL_SIZE,
+    TEST_SIZE,
+)
 
 
 def _get_data_directory():
@@ -75,7 +80,9 @@ def _build_index(features, targets, edges):
     return node_ids, nid2idx
 
 
-def _make_masks(y, per_class_train=128, val_size=500, test_size=1000, seed=0):
+def _make_masks(
+    y, per_class_train=LABELED_PER_CLASS, val_size=VAL_SIZE, test_size=TEST_SIZE, seed=0
+):
     N = y.shape[0]
     rng = np.random.default_rng(seed)
     train = np.zeros(N, dtype=bool)

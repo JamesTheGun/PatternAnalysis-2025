@@ -4,8 +4,9 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv, Sequential
 import torch.nn.functional as F
-
-STUPIDLY_LARGE_LAYER_SIZE = 512
+from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+    STUPIDLY_LARGE_LAYER_SIZE,
+)
 
 
 class GraphConvolutionalNetwork(nn.Module):
@@ -219,3 +220,4 @@ def get_model(in_dim, out_dim, device):
         is_hour_glass=True,
         expansion_ratio=0.5,
     ).to(device)
+    return model
