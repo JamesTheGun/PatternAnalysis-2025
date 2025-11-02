@@ -39,7 +39,7 @@ Combine x, edge_index, y, and all masks into a PyTorch Geometric Data object and
 ## Model Implementation Details
 Model configuration is defined in `constants.py`.  
 By default, a U-Net configuration is used for the blocks — this architecture is shown to be effective for graph neural networks (Gao, H., & Ji, S. (2019). *Graph U-Nets.* In Proceedings of the 36th International Conference on Machine Learning (ICML 2019), pp. 2083–2092) and was found to outperform strictly hourglass configurations experimentally.  
-All other model parameters were tuned experimentally. In 'modules.py', blockGCN uses sub classes.
+All other model parameters were tuned experimentally. blockGCN, GraphSAGE, GraphConvolutionalNetwork, as well as the function get_model can be found in 'modules.py'. The get_model() function should be used to access these classes.
 The model training loop is located in train.py
 Existing models are run via predict.py. When a model has been trained, the checkpoint .pt is saved to checkpoint/
 
