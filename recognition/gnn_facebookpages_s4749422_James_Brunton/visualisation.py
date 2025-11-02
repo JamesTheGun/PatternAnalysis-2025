@@ -7,6 +7,7 @@ import torch
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
+from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import VIS_OUT_PATH
 
 # --- helpers ---------------------------------------------------------------
 
@@ -301,3 +302,43 @@ def plot_training_curve(history, out_path=None):
         plt.close()
     else:
         plt.show()
+
+
+def generate_visuals(data, test_mask, pred, label_names, model, history=None):
+
+    if history:
+        plot_training_curve(history, out_path=VIS_OUT_PATH)
+
+    plot_confusion_matrix_from_preds(
+        y_true=data.y[test_mask].detach().cpu(),
+        y_pred=pred[test_mask].detach().cpu(),
+        label_names=label_names,
+        normalize=True,
+        title="Confusion matrix (test)",
+        out_path="figs/confusion_matrix.png",
+    )
+
+    Z = get_node_embeddings(model, data, prefer_penultimate=True)
+
+    tsne_plot_from_embeddings(
+        Z=Z,
+        y=data.y,
+        mask=test_mask,
+        label_names=label_names,
+        title_prefix="t-SNE (test)",
+        out_path=VIS_OUT_PATH,
+        perplexity=30,
+        random_state=0,
+    )
+
+    umap_plot_from_embeddings(
+        Z=Z,
+        y=data.y,
+        mask=test_mask,
+        label_names=label_names,
+        title_prefix="UMAP (test)",
+        out_path=VIS_OUT_PATH,
+        n_neighbors=15,
+        min_dist=0.1,
+        random_state=0,
+    )

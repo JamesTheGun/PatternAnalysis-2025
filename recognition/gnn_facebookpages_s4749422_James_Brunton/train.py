@@ -1,13 +1,10 @@
+from ast import mod
 import torch
 from torch.nn.functional import cross_entropy
 import numpy as np
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.visualisation import (
-    get_node_embeddings,
-    tsne_plot_from_embeddings,
-    umap_plot_from_embeddings,
-    plot_confusion_matrix_from_preds,
-    plot_training_curve,
+    generate_visuals,
 )
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import get_data
@@ -77,40 +74,14 @@ def main():
     test_mask = data.test_mask
     test_acc = (pred[test_mask] == data.y[test_mask]).float().mean().item()
     print(f"\nTEST ACC: {test_acc:.3f}")
-    plot_training_curve(history, out_path="figs/training_curve.png")
 
-    plot_confusion_matrix_from_preds(
-        y_true=data.y[test_mask].detach().cpu(),
-        y_pred=pred[test_mask].detach().cpu(),
+    generate_visuals(
+        data=data,
+        test_mask=test_mask,
+        pred=pred,
         label_names=label_names,
-        normalize=True,
-        title="Confusion matrix (test)",
-        out_path="figs/confusion_matrix.png",
-    )
-
-    Z = get_node_embeddings(model, data, prefer_penultimate=True)
-
-    tsne_plot_from_embeddings(
-        Z=Z,
-        y=data.y,
-        mask=test_mask,
-        label_names=label_names,
-        title_prefix="t-SNE (test)",
-        out_path="figs/tsne_test.png",
-        perplexity=30,
-        random_state=0,
-    )
-
-    umap_plot_from_embeddings(
-        Z=Z,
-        y=data.y,
-        mask=test_mask,
-        label_names=label_names,
-        title_prefix="UMAP (test)",
-        out_path="figs/umap_test.png",
-        n_neighbors=15,
-        min_dist=0.1,
-        random_state=0,
+        model=model,
+        history=history,
     )
 
 
