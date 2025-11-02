@@ -59,6 +59,29 @@ To predict using the pre-trained model, simply run:
 ```bash
 python predict.py
 ```
+
+Or simply work through usage.ipynb
+
+Confusion matrix, training curve and t_SNE (T-distributed Stochastic Neighbor Embedding.) will be generated and saved to the visualisations folder.
+
+## Visualisation of Training:
+### Visualisations
+
+<p align="center">
+  <img src="./visualisations/confusion_matrix.png" alt="Confusion matrix" width="600"><br/>
+  <em>Figure 1 — Confusion matrix on the test split.</em>
+</p>
+
+<p align="center">
+  <img src="./visualisations/out_path.png" alt="Training/validation loss & accuracy curves" width="600"><br/>
+  <em>Figure 2 — Training and validation curves across epochs.</em>
+</p>
+
+<p align="center">
+  <img src="./visualisations/t_SNE.png" alt="t-SNE of node embeddings" width="600"><br/>
+  <em>Figure 3 — t-SNE of learned node embeddings (color = true class).</em>
+</p>
+
 ## Results and Discussion
 
 | Model | Val Accuracy | Test Accuracy | Notes |
