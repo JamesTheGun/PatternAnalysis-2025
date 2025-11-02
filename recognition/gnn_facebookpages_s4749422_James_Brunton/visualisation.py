@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix
-from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import VIS_OUT_PATH
+from recognition.gnn_facebookpages_s4749422_James_Brunton.parameters import VIS_OUT_PATH
 
 # --- helpers ---------------------------------------------------------------
 

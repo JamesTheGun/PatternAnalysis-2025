@@ -3,7 +3,8 @@ import torch
 import numpy as np
 import os
 from torch_geometric.data import Data
-from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+
+from recognition.gnn_facebookpages_s4749422_James_Brunton.parameters import (
     LABELED_PER_CLASS,
     VAL_SIZE,
     TEST_SIZE,

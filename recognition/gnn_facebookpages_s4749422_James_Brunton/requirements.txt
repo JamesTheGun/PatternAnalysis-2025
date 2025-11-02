@@ -1,0 +1,11 @@
+torch>=2.4.0
+torch-geometric>=2.5.0
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+numpy>=1.26
+pandas>=2.2
+matplotlib>=3.9
+scikit-learn>=1.5
+tqdm>=4.66

@@ -5,7 +5,7 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.visualisation import (
     generate_visuals,
 )
 
-from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+from recognition.gnn_facebookpages_s4749422_James_Brunton.parameters import (
     GCN_CHECKPOINT_PATH,
 )
 

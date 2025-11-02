@@ -11,7 +11,7 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.dataset import get_dat
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.modules import get_model
 
-from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+from recognition.gnn_facebookpages_s4749422_James_Brunton.parameters import (
     EPOCHS,
     EPOCH_PRINT_INTERVAL,
     LEARNING_RATE,
@@ -20,11 +20,8 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
 )
 
 
+# classes are fairly imbalanced... we temper class weights to fix this...
 def tempered_class_weights(y, train_mask, C, alpha=0.5):
-    """
-    y: torch.LongTensor [N] (any device)
-    train_mask: torch.BoolTensor [N] (any device)
-    """
     yy = y.detach().cpu()
     tm = train_mask.detach().cpu()
 

@@ -1,11 +1,12 @@
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv
 import torch.nn.functional as F
-from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
+
+from recognition.gnn_facebookpages_s4749422_James_Brunton.parameters import (
     STUPIDLY_LARGE_LAYER_SIZE,
     BGCN_PARAMS,
     GCN_PARAMS,
-    SAGE_PARAMS,
+    GCN_SAGE_PARAMS,
 )
 
 
@@ -15,6 +16,23 @@ class GraphConvolutionalNetwork(nn.Module):
         self.conv1 = GCNConv(in_dim, hidden, normalize=True, cached=True)
         self.conv2 = GCNConv(hidden, hidden, normalize=True, cached=True)
         self.conv3 = GCNConv(hidden, out_dim, normalize=True, cached=True)
+        self.drop = nn.Dropout(p)
+
+    def forward(self, x, edge_index):
+        x = self.conv1(x, edge_index).relu()
+        x = self.drop(x)
+        x = self.conv2(x, edge_index).relu()
+        x = self.drop(x)
+        x = self.conv3(x, edge_index)
+        return x
+
+
+class GraphSAGE(nn.Module):
+    def __init__(self, in_dim, hidden, out_dim, p=0.5):
+        super().__init__()
+        self.conv1 = SAGEConv(in_dim, hidden, normalize=True)
+        self.conv2 = SAGEConv(hidden, hidden, normalize=True)
+        self.conv3 = SAGEConv(hidden, out_dim, normalize=True)
         self.drop = nn.Dropout(p)
 
     def forward(self, x, edge_index):
@@ -192,23 +210,6 @@ class blockGCN(nn.Module):
         return x
 
 
-class GraphSAGE(nn.Module):
-    def __init__(self, in_dim, hidden, out_dim, p=0.5):
-        super().__init__()
-        self.conv1 = SAGEConv(in_dim, hidden, normalize=True)
-        self.conv2 = SAGEConv(hidden, hidden, normalize=True)
-        self.conv3 = SAGEConv(hidden, out_dim, normalize=True)
-        self.drop = nn.Dropout(p)
-
-    def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index).relu()
-        x = self.drop(x)
-        x = self.conv2(x, edge_index).relu()
-        x = self.drop(x)
-        x = self.conv3(x, edge_index)
-        return x
-
-
 def get_model(in_dim, out_dim, device, model_type="bgcn", **kwargs):
     model_type = str(model_type).lower()
 
@@ -227,7 +228,7 @@ def get_model(in_dim, out_dim, device, model_type="bgcn", **kwargs):
         )
 
     elif model_type in {"sage", "graphsage"}:
-        params = SAGE_PARAMS.copy()
+        params = GCN_SAGE_PARAMS.copy()
         params.update(kwargs)
         model = GraphSAGE(
             in_dim=in_dim,
