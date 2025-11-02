@@ -70,11 +70,9 @@ class blockGCN(nn.Module):
             self.expansion_ratio = float(expansion_ratio)
             self.is_hour_glass = bool(is_hour_glass)
             self.drop = nn.Dropout(p)
-            # Build and assign layers
             self.layers = self.build_layers()
 
         def build_layers(self):
-            # Return a ModuleList
             if self.is_hour_glass:
                 return self.build_layers_hourglass()
             else:
@@ -90,36 +88,22 @@ class blockGCN(nn.Module):
                 ]
             )
 
-        # ----- helpers that work for ratio > 1 (grow) and ratio < 1 (shrink) -----
-
         def _progressive_layers(self, steps, starting_size, ratio):
-            """
-            Multiply channels by `ratio` for `steps`, enforcing at least +/-1 change.
-            Returns (layers, final_size).
-            """
             layers = []
             in_ch = int(starting_size)
             r = float(ratio)
-            # Guard against degenerate ratios
             if r == 1.0:
                 r = 1.0001
             for _ in range(int(steps)):
-                # proposed new width
                 out_ch = int(round(in_ch * r))
-                # force a change of at least 1 unit toward the intended direction
                 if out_ch == in_ch:
                     out_ch = in_ch + (1 if r > 1.0 else -1)
-                # keep within sane bounds
                 out_ch = max(1, min(out_ch, STUPIDLY_LARGE_LAYER_SIZE))
                 layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
                 in_ch = out_ch
             return layers, in_ch
 
         def _towards_target_layers(self, current_size, target_size, ratio_hint):
-            """
-            Build layers that move monotonically from current_size to target_size.
-            Uses ratio_hint (>1 means multiplicative growth per step; <1 means shrink).
-            """
             layers = []
             in_ch = int(current_size)
             tgt = int(target_size)
@@ -127,14 +111,12 @@ class blockGCN(nn.Module):
             if in_ch == tgt:
                 return layers
 
-            # choose a multiplier > 1 for growth steps
             r = float(ratio_hint)
             if r == 1.0:
                 r = 1.0001
             grow_mult = r if r > 1.0 else (1.0 / r if r > 0.0 else 2.0)
 
             if in_ch < tgt:
-                # grow until we hit target
                 while in_ch < tgt:
                     out_ch = int(round(in_ch * grow_mult))
                     if out_ch <= in_ch:
@@ -143,7 +125,6 @@ class blockGCN(nn.Module):
                     layers.append(GCNConv(in_ch, out_ch, normalize=True, cached=True))
                     in_ch = out_ch
             else:
-                # shrink until we hit target
                 while in_ch > tgt:
                     out_ch = int(round(in_ch / grow_mult))
                     if out_ch >= in_ch:
@@ -154,19 +135,14 @@ class blockGCN(nn.Module):
 
             return layers
 
-        # ----- hourglass that supports expansion_ratio < 1 -----
-
         def build_layers_hourglass(self):
             base = int(self.layer_size)
-            up_count = self.block_layer_count // 2  # integer division
+            up_count = self.block_layer_count // 2
 
-            # First half: move by multiplying with ratio (grow if >1, shrink if <1)
             up_layers, mid = self._progressive_layers(
                 up_count, base, self.expansion_ratio
             )
 
-            # Second half: return to base width monotonically
-            # If ratio > 1 we will constrict; if ratio < 1 we will expand back.
             down_layers = self._towards_target_layers(
                 current_size=mid, target_size=base, ratio_hint=self.expansion_ratio
             )
@@ -178,7 +154,6 @@ class blockGCN(nn.Module):
             for layer in self.layers:
                 x = F.leaky_relu(layer(x, edge_index), negative_slope=0.1)
                 x = self.drop(x)
-            # residual: final width equals base `layer_size`, so shapes match
             x = x + x_in
             return x
 
@@ -231,3 +206,16 @@ class GraphSAGE(nn.Module):
         x = self.drop(x)
         x = self.conv3(x, edge_index)
         return x
+
+
+def get_model(in_dim, out_dim, device):
+    model = blockGCN(
+        in_dim,
+        out_dim,
+        block_count=2,
+        block_layer_count=5,
+        block_layer_size=256,
+        p=0.75,
+        is_hour_glass=True,
+        expansion_ratio=0.5,
+    ).to(device)
