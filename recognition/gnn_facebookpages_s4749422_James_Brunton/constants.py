@@ -1,10 +1,16 @@
+from pathlib import Path
+
 # paths
-VIS_OUT_PATH = "recognition//gnn_facebookpages_s4749422_James_Brunton//visualisations"
-CHECKPOINT_PATH = "gcn_checkpoint.pt"
+VIS_OUT_PATH = "recognition/gnn_facebookpages_s4749422_James_Brunton/visualisations"
+GCN_CHECKPOINT_PATH = str(
+    Path(
+        "recognition/gnn_facebookpages_s4749422_James_Brunton/checkpoints/gcn_checkpoint.pt"
+    )
+)
 
 # model
 STUPIDLY_LARGE_LAYER_SIZE = 512
-EPOCHS = 300
+EPOCHS = 5
 EPOCH_PRINT_INTERVAL = 20
 LEARNING_RATE = 1e-4
 WIEGHT_DECAY = 0.1

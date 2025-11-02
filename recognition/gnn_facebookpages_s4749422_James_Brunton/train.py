@@ -16,6 +16,7 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
     EPOCH_PRINT_INTERVAL,
     LEARNING_RATE,
     WIEGHT_DECAY,
+    GCN_CHECKPOINT_PATH,
 )
 
 
@@ -85,7 +86,10 @@ def main():
     test_acc = (pred[test_mask] == data.y[test_mask]).float().mean().item()
     print(f"\nTEST ACCURACY: {test_acc:.3f}")
 
-    print("generated")
+    torch.save(
+        {"state_dict": model.state_dict(), "labels": label_names}, GCN_CHECKPOINT_PATH
+    )
+
     generate_visuals(
         data=data,
         test_mask=test_mask,

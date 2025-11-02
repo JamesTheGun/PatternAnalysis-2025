@@ -6,7 +6,7 @@ from recognition.gnn_facebookpages_s4749422_James_Brunton.visualisation import (
 )
 
 from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
-    CHECKPOINT_PATH,
+    GCN_CHECKPOINT_PATH,
 )
 
 
@@ -20,8 +20,17 @@ def main():
 
     model = get_model(in_dim=in_dim, out_dim=out_dim, device=device)
 
-    state_dict = torch.load(CHECKPOINT_PATH, map_location=device)
-    model.load_state_dict(state_dict)
+    state = torch.load(GCN_CHECKPOINT_PATH, map_location=device)
+
+    if isinstance(state, dict) and "state_dict" in state:
+        state = state["state_dict"]
+
+    if isinstance(state, dict) and any(k.startswith("module.") for k in state.keys()):
+        state = {k.replace("module.", "", 1): v for k, v in state.items()}
+
+    missing_unexp = model.load_state_dict(state, strict=True)
+    print("load_state_dict result:", missing_unexp)
+
     model.eval()
 
     with torch.no_grad():
