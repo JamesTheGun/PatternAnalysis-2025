@@ -6,6 +6,7 @@ from torch_geometric.nn import GCNConv, SAGEConv, Sequential
 import torch.nn.functional as F
 from recognition.gnn_facebookpages_s4749422_James_Brunton.constants import (
     STUPIDLY_LARGE_LAYER_SIZE,
+    BGCN_PARAMS,
 )
 
 
@@ -71,9 +72,9 @@ class blockGCN(nn.Module):
             self.expansion_ratio = float(expansion_ratio)
             self.is_hour_glass = bool(is_hour_glass)
             self.drop = nn.Dropout(p)
-            self.layers = self.build_layers()
+            self.layers = self._build_layers()
 
-        def build_layers(self):
+        def _build_layers(self):
             if self.is_hour_glass:
                 return self.build_layers_hourglass()
             else:
@@ -168,7 +169,7 @@ class blockGCN(nn.Module):
                     expansion_ratio=self.expansion_ratio,
                     is_hour_glass=self.is_hour_glass,
                 )
-                for _ in range(self.block_count)
+                for block in range(self.block_count)
             ]
         )
 
@@ -209,15 +210,31 @@ class GraphSAGE(nn.Module):
         return x
 
 
-def get_model(in_dim, out_dim, device):
-    model = blockGCN(
-        in_dim,
-        out_dim,
-        block_count=2,
-        block_layer_count=5,
-        block_layer_size=256,
-        p=0.75,
-        is_hour_glass=True,
-        expansion_ratio=0.5,
-    ).to(device)
-    return model
+def get_model(in_dim, out_dim, device, model_type="bgcn", **kwargs):
+    model_type = str(model_type).lower()
+
+    if model_type in {"bgcn", "blockgcn"}:
+        params = BGCN_PARAMS.copy()
+        params.update(kwargs)  # allow overrides
+        model = blockGCN(in_dim=in_dim, out_dim=out_dim, **params)
+
+    elif model_type == "gcn":
+        model = GraphConvolutionalNetwork(
+            in_dim=in_dim,
+            hidden=kwargs.get("hidden", 128),
+            out_dim=out_dim,
+            p=kwargs.get("p", 0.6),
+        )
+
+    elif model_type == "sage":
+        model = GraphSAGE(
+            in_dim=in_dim,
+            hidden=kwargs.get("hidden", 128),
+            out_dim=out_dim,
+            p=kwargs.get("p", 0.5),
+        )
+
+    else:
+        raise ValueError(f"Unknown model_type '{model_type}'.")
+
+    return model.to(device)
